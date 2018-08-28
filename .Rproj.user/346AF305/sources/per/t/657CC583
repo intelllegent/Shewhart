@@ -1,0 +1,23 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1523541086938.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "1932573891",
+    "id" : "657CC583",
+    "lastKnownWriteTime" : 1530703279,
+    "last_content_update" : 1530703279837,
+    "path" : "D:/R_Projects/Shewchart_2.0/Shewchart_2.0/UI.R",
+    "project_path" : "UI.R",
+    "properties" : {
+        "cursorPosition" : "30,14",
+        "scrollLine" : "0",
+        "tempName" : "Untitled1"
+    },
+    "relative_order" : 1,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

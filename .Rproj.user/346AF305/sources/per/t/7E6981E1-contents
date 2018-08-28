@@ -1,0 +1,71 @@
+library("readxl")
+
+names <- read_excel("FRT Weekly Monitoting.xlsx", sheet = 1,
+                    range = "A1:P1", col_names = TRUE)
+# чекать по имени, что нужно.
+
+
+
+A <- read_excel("FRT Weekly Monitoting.xlsx", sheet = 1,
+                col_names = TRUE,col_types = c("date",rep("text",5),rep("numeric",9)))
+
+
+observe({
+  if (is.null(input$file1))
+    return(NULL)
+  cnames <- colnames(names())
+  updateCheckboxGroupInput(session, inputId = "show_vars", choices = cnames)
+})
+
+data <- read_excel(input$file1$name, sheet = 1,
+                   range = "A1:P1", col_names = TRUE)
+
+observe({
+  if (is.null(input$file1))
+    return(NULL)
+  if (input$show_table)
+    show <- input$headers
+  output$text <- renderText({
+    return(show) 
+  })
+  removeUI("headers")
+  
+})
+
+
+
+while(i<= length(names_sort)){
+  id <- grep(names_sort[i],col_sort)
+  if (id<1){
+    c="да"
+  }
+  
+}
+
+switch(x,
+       "Date" = "date",
+       "Material" = "text",
+       "FOUP ID" = "text",
+       "Wafer ID" = "text",
+       "Deposition/Sputter" = "text",
+       "Test's type" = "text",
+       "Use" = "text",
+       "Test type" = "text",
+       "Recipe" = "text",
+       "Operator" = "text",
+       "Point" = "numeric",
+       "X(mm)" = "numeric",
+       "Y(mm)" = "numeric",
+       "Thickness(nm)" = "numeric",
+       "Thickness PRE(nm)" = "numeric",
+       "Thickness POST(nm)" = "numeric",
+       "Dep time(s)" = "numeric",
+       "Dep Rate (nm/min)" = "numeric",
+       "Average Thickness(nm)" = "numeric",
+       "Max(nm)" = "numeric",
+       "Min(nm)" = "numeric",
+       "Delta" = "numeric",
+       "Delta, nm" = "numeric",
+       "Delta (nm)" = "numeric",
+       "NU, %" = "numeric",
+       "guess")
