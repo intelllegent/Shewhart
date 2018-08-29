@@ -41,6 +41,11 @@ get_types <- function(column_names){
   return(k)
 }
 
+is.integer0 <- function(x)
+{
+  is.integer(x) && length(x) == 0L
+}
+
 server <- function(input, output,session) {
 
 # Получение названий столбцов для выбора 
@@ -67,8 +72,8 @@ server <- function(input, output,session) {
     input$show_vars
   })
   
-  col_types <- reactive({ 
-    get_types(col_sort()) 
+  col_type <- reactive({ 
+    get_types(col_names()) 
   })
   
   col_trash <- reactive({
@@ -80,17 +85,28 @@ server <- function(input, output,session) {
     insertUI("#show_vars", "afterEnd",
              actionButton("form_table", "Сформировать таблицу"))
     observeEvent(input$form_table, {
-      a <- isolate(col_trash())
-      a[1]
-      b <- isolate(col_names())
-      for (i in 1: length(a)){
+      i_col_trash <- isolate(col_trash())
+      i_col_type <- isolate(col_type())
+      
+      if (length(i_col_trash)!=0) {
+        i_col_names <- isolate(col_names())
         n_skip <- vector(mode="integer")
-        n_skip[i] <- grep(a[i],b)
-      }
-      n_skip
+
+        for (i in 1: length(i_col_trash)){
+          if (is.integer0(grep(i_col_trash[i],i_col_names))){
+            next()
+          }else{
+           n_skip[i] <- grep(i_col_trash[i],i_col_names) 
+          }
+        }
         
-      isolate(col_types())
-      data <- read_excel(input$file1$name, sheet = 1, col_names = TRUE, col_types = isolate(col_names()))
+        for (i in 1:length(n_skip)){
+          i_col_type[n_skip[i]] <- "skip" 
+        }
+      }  
+    
+      data <- read_excel(input$file1$name, sheet = 1, col_names = TRUE, col_types = i_col_type)
+      
       output$tbl <- renderDataTable({
           if (is.null(data)) return(NULL)
           if (length(input$show_vars) == 0L)
