@@ -41,6 +41,7 @@ get_types <- function(column_names){
   return(k)
 }
 
+# Проверка пустого вектора
 is.integer0 <- function(x)
 {
   is.integer(x) && length(x) == 0L
