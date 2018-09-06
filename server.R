@@ -52,7 +52,7 @@ server <- function(input, output,session) {
 # Получение названий столбцов для выбора 
   data <- reactive({
     if (is.null(input$file1)) return(NULL)
-    read_excel(input$file1$datapath, sheet = 1, col_names = TRUE, n_max = 1)
+    read_excel(input$file1$datapath, sheet = 1, col_names = TRUE, n_max = 0)
   })
   
   col_names <- reactive({
@@ -106,7 +106,19 @@ server <- function(input, output,session) {
         }
       }  
     
+      
       data <- read_excel(input$file1$name, sheet = 1, col_names = TRUE, col_types = i_col_type)
+      
+      # Преобразование данных
+      buff <- get_types(isolate(col_sort())) 
+      for (i in 1:length(buff)){
+        if (i_col_type[i] == "numeric"){
+          data[i] <- round(data[i], 2)
+        }
+      }
+      
+      #---
+      
       
       output$tbl <- renderDataTable({
           if (is.null(data)) return(NULL)

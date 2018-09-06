@@ -69,3 +69,14 @@ switch(x,
        "Delta (nm)" = "numeric",
        "NU, %" = "numeric",
        "guess")
+
+
+
+data[i_col_type[i]] <- 
+
+
+
+
+
+data <- read_excel("FRT Weekly Monitoting.xlsx", sheet = 1, col_names = TRUE, n_max = 1)
+
