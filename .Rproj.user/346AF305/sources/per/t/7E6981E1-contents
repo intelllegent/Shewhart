@@ -80,3 +80,13 @@ data[i_col_type[i]] <-
 
 data <- read_excel("FRT Weekly Monitoting.xlsx", sheet = 1, col_names = TRUE, n_max = 1)
 
+observeEvent(input$form_table,{
+  output$graph <- renderUI({
+    if (is.null(data())) return(NULL)
+    tagList(
+      radioButtons("x_graph", "Данные по оси Х:", 
+                   col_sort(),
+                   choices = col_sort())
+    )
+  })
+})

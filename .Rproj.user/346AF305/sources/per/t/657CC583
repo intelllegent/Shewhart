@@ -5,14 +5,14 @@
     "dirty" : false,
     "encoding" : "UTF-8",
     "folds" : "",
-    "hash" : "1932573891",
+    "hash" : "3133168892",
     "id" : "657CC583",
-    "lastKnownWriteTime" : 1535546877,
-    "last_content_update" : 1535546877,
+    "lastKnownWriteTime" : 1536315593,
+    "last_content_update" : 1536315593000,
     "path" : "~/GitHub/Shewhart/UI.R",
     "project_path" : "UI.R",
     "properties" : {
-        "cursorPosition" : "30,14",
+        "cursorPosition" : "21,34",
         "scrollLine" : "0",
         "tempName" : "Untitled1"
     },

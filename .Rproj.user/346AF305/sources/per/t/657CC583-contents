@@ -23,7 +23,8 @@ ui <- fluidPage(
 
       tags$hr(),
       
-      uiOutput("vars")
+      uiOutput("vars"),
+      uiOutput("graph")
     ),
      
       
@@ -32,7 +33,7 @@ ui <- fluidPage(
       tabsetPanel(
         tabPanel("Plot"),
         tabPanel("Summary", textOutput("text")),
-        tabPanel("Table", dataTableOutput("tbl"))
+        tabPanel("Summary Table", dataTableOutput("tbl"))
       )
       # Output: Data file ----
       

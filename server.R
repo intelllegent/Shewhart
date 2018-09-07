@@ -128,9 +128,31 @@ server <- function(input, output,session) {
             return(select(data, one_of(input$show_vars)))
         })
       removeUI("#show_vars")
+      insertUI("#vars", "afterEnd",
+               actionButton("plot", "Построить график"))
       removeUI("#form_table")
+      
     }, ignoreInit = TRUE, once = TRUE) 
   })
+  
+  #Запрашивание построения графика
+  observeEvent(input$plot,{
+    output$graph <- renderUI({
+      if (is.null(data())) return(NULL)
+      tagList(
+        radioButtons("x_graph", "Данные по оси Х:", 
+                     colnames(data())
+                     ),
+        radioButtons("y_graph", "Данные по оси Y:", 
+                     c("1","2","3")
+        )
+      )
+    })
+  })
+  
+  
+  
+  #---
   
   output$text <- renderText({
     req(input$file1)
