@@ -90,3 +90,31 @@ observeEvent(input$form_table,{
     )
   })
 })
+
+
+
+
+observeEvent(input$plot,{
+  output$graph <- renderUI({
+    insertUI("#plot", "beforeBegin",
+             actionButton("plot_1", "Построить"))
+    if (is.null(data())) return(NULL)
+    tagList(
+      radioButtons("x_graph", "Данные по оси Х:", 
+                   colnames(data())
+      ),
+      radioButtons("y_graph", "Данные по оси Y:", 
+                   colnames(data())
+      )
+    )
+    
+  })
+  
+})
+
+
+
+
+
+
+

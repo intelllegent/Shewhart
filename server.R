@@ -121,7 +121,7 @@ server <- function(input, output,session) {
       
       
       output$tbl <- renderDataTable({
-          if (is.null(data)) return(NULL)
+          #if (is.null(data)) return(NULL)
           if (length(input$show_vars) == 0L)
             return(data)
           else
@@ -137,6 +137,7 @@ server <- function(input, output,session) {
   
   #Запрашивание построения графика
   observeEvent(input$plot,{
+    removeUI("#plot")
     output$graph <- renderUI({
       if (is.null(data())) return(NULL)
       tagList(
@@ -144,19 +145,30 @@ server <- function(input, output,session) {
                      colnames(data())
                      ),
         radioButtons("y_graph", "Данные по оси Y:", 
-                     c("1","2","3")
+                     colnames(data())
+                     )
         )
-      )
+      })
+    insertUI("#y_graph", "afterEnd",
+             actionButton("plot_1", "Построить"))
     })
+  #---
+  
+  #Вывод графика
+  observeEvent(input$plot_1,{
+    x_var <- input$x_graph
+    y_var <- input$y_graph
+    removeUI("#plot_1")
+    removeUI("#x_graph")
+    removeUI("#y_graph")
+    
   })
-  
-  
   
   #---
   
   output$text <- renderText({
-    req(input$file1)
-    return(col_trash()) 
+    req(input$plot_1)
+    return(x_var) 
   })
  
 }
