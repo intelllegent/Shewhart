@@ -107,7 +107,7 @@ server <- function(input, output,session) {
       }  
     
       
-      data <- read_excel(input$file1$name, sheet = 1, col_names = TRUE, col_types = i_col_type)
+      data <<- read_excel(input$file1$name, sheet = 1, col_names = TRUE, col_types = i_col_type)
       
       # Преобразование данных
       buff <- get_types(isolate(col_sort())) 
@@ -156,8 +156,9 @@ server <- function(input, output,session) {
   
   #Вывод графика
   observeEvent(input$plot_1,{
-    x_var <- input$x_graph
-    y_var <- input$y_graph
+    x_var <- data[input$x_graph]
+    y_var <- data[input$y_graph]
+    
     removeUI("#plot_1")
     removeUI("#x_graph")
     removeUI("#y_graph")
