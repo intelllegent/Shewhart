@@ -5,6 +5,8 @@ library(shiny)
 library(tidyverse)
 library(readxl)
 library(DT)
+library(ggplot2)
+library(plotly)
 
 get_types <- function(column_names){
   i=1
@@ -132,7 +134,7 @@ server <- function(input, output,session) {
                actionButton("plot", "Построить график"))
       removeUI("#form_table")
       
-    }, ignoreInit = TRUE, once = TRUE) 
+    }) 
   })
   
   #Запрашивание построения графика

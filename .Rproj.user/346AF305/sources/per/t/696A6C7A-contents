@@ -1,0 +1,1226 @@
+# Загрузка пакетов -----------------------------------------------------------
+
+# Проверка скаченных графических пакетов, необходимых для работы
+
+if(!require(shiny)) install.packages("shiny")
+if(!require(highcharter)) install.packages("highcharter")
+if(!require(dplyr)) install.packages("dplyr")
+if(!require(tidyr)) install.packages("tidyr")
+if(!require(openxlsx)) install.packages("openxlsx")
+
+
+# Подключение необходимых графических пакетов
+
+library(shiny)
+library(highcharter)
+library(dplyr)
+library(tidyr) 
+library(openxlsx)
+
+
+# Выгрузка исходных данных в R, формирование таблиц для оценки ------------
+# (Средняя толщина, значения, размах)
+#file_path <- 'FRT_Weekly_Monitoting_USG5k.xlsx'
+file_path <- 'FRT Weekly Monitoting_final.xlsx' #путь к таблице данных
+
+Data <- Data_read <- read.xlsx(file_path ,sheet = 1, detectDates = TRUE)
+Data$Date<-as.numeric(as.POSIXct(Data_read$Date))*1000 # перевод даты в миллисекунды, 
+#прошедшие начиная с 1970-01-01. Стандарт JS. Ниже закомментированы строчки для 
+#преобразования даты, так как теперь мы предстовляем ее в числовом виде.
+#Сделано для того, чтобы передать в tickPosition число для выведения определенных дат
+
+K <- 30 # Сколько значений оставляем для анализа
+u_Date <- unique(Data$Date)
+if (length(u_Date)>K){
+  Data <- Data[Data$Date >= u_Date[length(u_Date)-K+1],]
+}
+rownames(Data)= c(1:length(Data$Date))
+
+
+USG_first <- Data[Data$Material=="USG - 1k",]
+USG_fifth <- Data[Data$Material=="USG - 5k",]
+TOX <- Data[Data$Material=="TOX - 1k",]
+
+### Средняя толщина пластин ###
+
+A_Th_first <- data.frame(USG_first$Date, USG_first$`Average.Thickness(nm)`)
+A_Th_first <- na.omit(A_Th_first)
+rownames(A_Th_first)= c(1:length(A_Th_first$USG_first.Date))
+names(A_Th_first) <- c('Date','Average_Thickness_nm')
+A_Th_first$Average_Thickness_nm <- round(A_Th_first$Average_Thickness_nm,2)
+#A_Th_first$Date <- as.Date(as.character(A_Th_first$Date))
+A_Th_first<-A_Th_first[order(A_Th_first$Date),]
+
+A_Th_fifth <- data.frame(USG_fifth$Date, USG_fifth$`Average.Thickness(nm)`)
+A_Th_fifth <- na.omit(A_Th_fifth)
+rownames(A_Th_fifth)= c(1:length(A_Th_fifth$USG_fifth.Date))
+names(A_Th_fifth) <- c('Date','Average_Thickness_nm')
+A_Th_fifth$Average_Thickness_nm <- round(A_Th_fifth$Average_Thickness_nm,2)
+#A_Th_fifth$Date <-  as.Date(as.character(A_Th_fifth$Date))
+A_Th_fifth<-A_Th_fifth[order(A_Th_fifth$Date),]
+
+A_Th_TOX <- data.frame(TOX$Date, TOX$`Average.Thickness(nm)`)
+A_Th_TOX <- na.omit(A_Th_TOX)
+rownames(A_Th_TOX)= c(1:length(A_Th_TOX$TOX.Date))
+names(A_Th_TOX) <- c('Date','Average_Thickness_nm')
+A_Th_TOX$Average_Thickness_nm <- round(A_Th_TOX$Average_Thickness_nm,2)
+#A_Th_TOX$Date <- as.Date(as.character(A_Th_TOX$Date))
+A_Th_TOX<-A_Th_TOX[order(A_Th_TOX$Date),]
+
+### Значения ### 
+
+values_first <- data.frame(Date = USG_first$Date, Thickness_nm = as.numeric(as.character(USG_first$`Thickness(nm)`)))
+values_fifth <- data.frame(Date = USG_fifth$Date, Thickness_nm = as.numeric(as.character(USG_fifth$`Thickness(nm)`)))
+values_tox <- data.frame(Date = TOX$Date, Thickness_nm = as.numeric(as.character(TOX$`Thickness(nm)`)))
+
+### Размах ### 
+
+R_first <- data.frame(USG_first$Date, USG_first$Delta)
+R_fifth <- data.frame(USG_fifth$Date, USG_fifth$Delta)
+R_tox <- data.frame(TOX$Date, TOX$Delta)
+
+names(R_first) <- c('Date','R')
+names(R_fifth) <- c('Date','R')
+names(R_tox) <- c('Date','R')
+
+R_first <- na.omit(R_first)
+R_fifth <- na.omit(R_fifth)
+R_tox <- na.omit(R_tox)
+
+rownames(R_first)= c(1:length(R_first$Date))
+rownames(R_fifth)= c(1:length(R_fifth$Date))
+rownames(R_tox)= c(1:length(R_tox$Date))
+#  Вычисление недостащих параметров, необходимых для построения -----------
+
+Av_usg <- c(mean(A_Th_first$Average_Thickness_nm, na.rm = TRUE), mean(A_Th_fifth$Average_Thickness_nm, na.rm = TRUE),
+            mean(A_Th_TOX$Average_Thickness_nm, na.rm = TRUE))
+
+Sigm <- c(sd(A_Th_first$Average_Thickness_nm, na.rm = TRUE), sd(A_Th_fifth$Average_Thickness_nm, na.rm = TRUE),
+          sd(A_Th_TOX$Average_Thickness_nm, na.rm = TRUE))
+
+LCL <- c((Av_usg[1] - 3 * Sigm[1]), (Av_usg[2] - 3 * Sigm[2]), (Av_usg[3] - 3 * Sigm[3]))
+UCL <- c((Av_usg[1] + 3 * Sigm[1]), (Av_usg[2] + 3 * Sigm[2]), (Av_usg[3] + 3 * Sigm[3]))
+
+L_LCL <- c(paste("LCL :", as.character(round(LCL[1], 2))), paste("LCL :", as.character(round(LCL[2], 2))),
+           paste("LCL :", as.character(round(LCL[3], 2))))
+L_UCL <- c(paste("UCL :", as.character(round(UCL[1], 2))), paste("UCL :", as.character(round(UCL[2], 2))),
+           paste("UCL :", as.character(round(UCL[3], 2))))
+L_Target <- c(paste("Target :", as.character(round(Av_usg[1], 2))), paste("Target :", as.character(round(Av_usg[2], 2))),
+              paste("Target :", as.character(round(Av_usg[3], 2))))
+
+
+R_Target <- c(mean(R_first$R), mean(R_fifth$R), mean(R_tox$R))
+
+R_Sigm <-c(sd(R_first$R), sd(R_fifth$R), sd(R_tox$R)) 
+            
+R_LCL <- c((R_Target[1] - 3 * R_Sigm[1]), (R_Target[2] - 3 * R_Sigm[2]),
+           (R_Target[3] - 3 * R_Sigm[3]))
+R_UCL <- c((R_Target[1] + 3 * R_Sigm[1]), (R_Target[2] + 3 * R_Sigm[2]),
+           (R_Target[3] + 3 * R_Sigm[3]))
+
+LR_LCL <- c(paste("R LCL :", as.character(round(R_LCL[1], 2))), paste("R LCL :", as.character(round(R_LCL[2], 2))),
+            paste("R LCL :", as.character(round(R_LCL[3], 2))))
+LR_UCL <- c(paste("R UCL :", as.character(round(R_UCL[1], 2))), paste("R UCL :", as.character(round(R_UCL[2], 2))),
+            paste("R UCL :", as.character(round(R_UCL[3], 2))))
+LR_Target <- c(paste("R Target :", as.character(round(R_Target[1], 2))), paste("Target :", as.character(round(R_Target[2], 2))),
+               paste("Target :", as.character(round(R_Target[3], 2))))
+
+
+# Пользовательские функции для анализа -----------------------------------------------------
+
+
+# Получение последовательности символов для анализа структур на особые причины
+### Сравнение ">": если больше значение больше операнда - 1, меньше - 0
+s_Sequence_up <- function(sample,operand){
+  l_Operand <- sample > operand
+  b_Operand <- 1*l_Operand
+  fin <- paste0(b_Operand, collapse ="")
+  return(fin)
+}
+
+### Сравнение "<": если больше значение больше операнда - 0, меньше - 1
+s_Sequence_low <- function(sample,operand){
+  l_Operand <- sample < operand
+  b_Operand <- 1*l_Operand
+  fin <- paste0(b_Operand, collapse ="")
+  return(fin)
+}
+
+### Вывод значений, находящихся внутри границ: (operand1, operand2)
+s_Sequence_in <- function(sample,operand1,operand2){
+  l_Operand1 <- sample > operand1 # Последовательность больше нижнего предела
+  l_Operand2 <- sample < operand2 # Последовательность меньше верхнего предела
+  l_Operand <- l_Operand1&l_Operand2
+  b_Operand <- 1*l_Operand
+  fin <- paste0(b_Operand, collapse ="")
+  return(fin)
+}
+
+### Разность каждого из членов последовательности
+
+s_Difference <-  function(sample){
+  v_diff <- diff(sample)
+  l_diff <- v_diff > 0
+  b_diff <- 1*l_diff
+  fin <- paste0(b_diff, collapse ="")
+  return(fin)
+  }
+  
+
+### Получение вектора позиций подстроки в строке
+v_Position <- function (exp,string){
+  list_pos <- gregexpr(exp,string)
+  v_pos <- unlist(list_pos)
+  return(v_pos)
+}
+
+
+
+### Контрольные карты Шухарта ---------------------------------------------------------------
+
+
+### Критерий 1: Выход точки за предельные границы -------------------------------------------
+
+Shewchart_1 <- function(table,sample,ucl,lcl){
+  data_UCL <- NULL
+  data_LCL <- NULL
+  j <- 1
+  
+  s_UCL<- s_Sequence_up(sample,ucl)
+  s_LCL<- s_Sequence_low(sample,lcl)
+  
+  id_UCL <- v_Position("1", s_UCL)
+    if (id_UCL != -1){
+        data_UCL <- table[id_UCL,]
+    }
+  
+  id_LCL <- v_Position("1", s_LCL)
+    if (id_LCL != -1){
+ #       while (j < length(id_LCL)) {
+          
+  #        j <- j+1
+   #     }
+        data_LCL <- table[id_LCL,]
+  }  
+  
+  Fin <- do.call(rbind,list(data_LCL,data_UCL))
+#  sum_str <- length(id_UCL)+length(id_LCL)
+#  row.names(Fin) = c(1:sum_str) 
+  return(Fin)
+}
+
+  trash1_1 <- Shewchart_1(A_Th_first,A_Th_first$Average_Thickness_nm,UCL[1],LCL[1])
+  trash1_2 <- Shewchart_1(A_Th_fifth,A_Th_fifth$Average_Thickness_nm,UCL[2],LCL[2])
+  trash1_3 <- Shewchart_1(A_Th_TOX,A_Th_TOX$Average_Thickness_nm,UCL[3],LCL[3])
+  
+### Критерий 2: 9 точек в зоне С или по одну сторону от средней линии -----------------------
+
+Shewchart_2 <- function(table,sample,average,sigma){
+  data_zone_C <- NULL
+  data_up <- NULL
+  data_low <- NULL
+  lower_c <- average - sigma
+  upper_c <- average + sigma
+  
+  s_zone_C<- s_Sequence_in(sample,lower_c,upper_c)
+  id_zone_C <- v_Position("111111111", s_zone_C)
+  
+    if (id_zone_C!= -1){
+      data_zone_C <- table[id_zone_C:(id_zone_C+8),]
+#      row.names(data_zone_C) = c(1:nrow(data_zone_C))
+    }
+  
+  s_upper_average <- s_Sequence_up(sample,average)
+  
+  id_up <- v_Position("111111111", s_upper_average)
+    if (id_up!=-1){
+        data_up <- table[id_up:(id_up+8),]
+    }
+  
+  id_low <- v_Position("000000000", s_upper_average)
+    if (id_low!=-1){
+        data_low <- table[id_low:(id_low+8),]
+    }
+  
+  # check <- id_up + id_low
+  #   if (check!= -2){
+  #       up_low <- do.call(rbind,list(data_up,data_low))
+  #       sum_str <- nrow(data_up) + nrow(data_low)
+  #       row.names(up_low) = c(1:sum_str)
+  #   }
+  
+   Fin <- do.call(rbind,list(data_zone_C, data_up, data_low))
+   return(Fin)
+}
+  trash2_1 <- Shewchart_2(A_Th_first,A_Th_first$Average_Thickness_nm, Av_usg[1], Sigm[1])
+  trash2_2 <- Shewchart_2(A_Th_fifth,A_Th_fifth$Average_Thickness_nm, Av_usg[2], Sigm[2])
+  trash2_3 <- Shewchart_2(A_Th_TOX,A_Th_TOX$Average_Thickness_nm, Av_usg[3], Sigm[3])
+  
+### Критерий 3: 6 последовательно возрастающих или убывающих точек  -----------------------------------------------
+  
+
+  Shewchart_3 <- function(table,sample){
+    data_incr <- NULL
+    data_decr <- NULL
+    incr_decr <- NULL
+    s_diff <- s_Difference(sample)
+    
+    id_diff_incr <- v_Position("11111", s_diff)
+    if (id_diff_incr!=-1){
+      data_incr <- table[(id_diff_incr):(id_diff_incr+5),]
+    }
+    
+    id_diff_decr <- v_Position("00000", s_diff)
+    if (id_diff_decr!=-1){
+      data_decr <- table[(id_diff_decr-1):(id_diff_decr+5),]
+    }
+    check <- id_diff_incr + id_diff_decr
+    if (check!= -2){
+      incr_decr <- do.call(rbind,list(data_incr,data_decr))
+      }
+    Fin <- incr_decr
+    return(Fin)
+  }
+
+  trash3_1 <- Shewchart_3(A_Th_first,A_Th_first$Average_Thickness_nm)
+  trash3_2 <- Shewchart_3(A_Th_fifth,A_Th_fifth$Average_Thickness_nm)
+  trash3_3 <- Shewchart_3(A_Th_TOX,A_Th_TOX$Average_Thickness_nm)
+
+### Критерий 4: 14 попеременно возрастающих и убывающих точек  -----------------------------------------------  
+  
+  Shewchart_4 <- function(table,sample){
+    data_in_dec<-NULL
+    s_diff <- s_Difference(sample)
+    
+    id_in_dec <- v_Position("1010101010101", s_diff)
+    if (id_in_dec!=-1){
+      data_in_dec <- table[(id_in_dec-1):(id_in_dec+14),]
+      
+    }
+    Fin <- data_in_dec
+    return(Fin)
+  }
+  trash4_1 <- Shewchart_4(A_Th_first,A_Th_first$Average_Thickness_nm)
+  trash4_2 <- Shewchart_4(A_Th_fifth,A_Th_fifth$Average_Thickness_nm)
+  trash4_3 <- Shewchart_4(A_Th_TOX,A_Th_TOX$Average_Thickness_nm)
+  
+### Критерий 5: 2 из 3 последовательных точек в зоне А или вне её -----------------------------------------------
+  
+  Shewchart_5 <- function(table,sample,average,sigma){
+    data_zone_A_up <- NULL
+    data_zone_A_low <- NULL
+    data_zone_A_up_2 <- NULL
+    data_zone_A_low_2 <- NULL
+   
+    s_zone_A_up <- s_Sequence_up(sample, average + 2*sigma)
+    s_zone_A_low <- s_Sequence_low(sample, average - 2*sigma)
+    
+    id_zone_A_up <- v_Position("11", s_zone_A_up)
+    if ( id_zone_A_up!= -1){
+      data_zone_A_up <- table[id_zone_A_up:(id_zone_A_up+2),]
+    #  row.names(data_zone_A_up) = c(1:nrow(data_zone_A_up))
+    }
+    
+    id_zone_A_low <- v_Position("11", s_zone_A_low)
+    if ( id_zone_A_low!= -1){
+      data_zone_A_low <- table[id_zone_A_low:(id_zone_A_low+2),]
+      #  row.names(data_zone_A_low) = c(1:nrow(data_zone_A_low))
+    }
+    
+    id_zone_A_up_2 <- v_Position("101", s_zone_A_up)
+    if ( id_zone_A_up_2!= -1){
+      data_zone_A_up_2 <- table[id_zone_A_up_2:(id_zone_A_up_2+2),]
+      #  row.names(data_zone_A_up_2) = c(1:nrow(data_zone_A_up_2))
+    }
+    
+    id_zone_A_low_2 <- v_Position("101", s_zone_A_low)
+    if ( id_zone_A_low_2!= -1){
+      data_zone_A_low_2 <- table[id_zone_A_low:(id_zone_A_low+2),]
+      #  row.names(data_zone_A_low_2) = c(1:nrow(data_zone_A_low_2))
+    }
+    
+        Fin <- do.call(rbind,list(data_zone_A_up, data_zone_A_low,data_zone_A_up_2, data_zone_A_low_2))
+    return(Fin)
+   }
+  trash5_1 <- Shewchart_5(A_Th_first,A_Th_first$Average_Thickness_nm, Av_usg[1], Sigm[1])
+  trash5_2 <- Shewchart_5(A_Th_fifth,A_Th_fifth$Average_Thickness_nm, Av_usg[2], Sigm[2])
+  trash5_3 <- Shewchart_5(A_Th_TOX,A_Th_TOX$Average_Thickness_nm, Av_usg[3], Sigm[3])
+
+### Критерий 6: 4 из 5 последовательных точек в зоне B или выше её -----------------------------------------------
+  
+  Shewchart_6 <- function(table,sample,average,sigma){
+    data_zone_B_up <- NULL
+    data_zone_B_up_2 <- NULL
+    data_zone_B_up_3 <- NULL
+    data_zone_B_up_4 <- NULL
+    data_zone_B_low <- NULL
+    data_zone_B_low_2 <- NULL
+    data_zone_B_low_3 <- NULL
+    data_zone_B_low_4 <-  NULL
+    
+    s_zone_B_up <- s_Sequence_up(sample, average + sigma)
+    s_zone_B_low <- s_Sequence_low(sample, average - sigma)
+    
+    id_zone_B_up <- v_Position('1111', s_zone_B_up)
+    if ( id_zone_B_up!= -1){
+      data_zone_B_up <- table[id_zone_B_up:(id_zone_B_up+2),]
+      #  row.names(data_zone_B_up) = c(1:nrow(data_zone_B_up))
+    }
+    
+    id_zone_B_up_2 <- v_Position('11101', s_zone_B_up)
+    if ( id_zone_B_up_2!= -1){
+      data_zone_B_up_2 <- table[id_zone_B_up_2:(id_zone_B_up_2+2),]
+      #  row.names(data_zone_B_up_2) = c(1:nrow(data_zone_B_up_2))
+    }
+    
+    id_zone_B_up_3 <- v_Position('11011', s_zone_B_up)
+    if ( id_zone_B_up_3!= -1){
+      data_zone_B_up_3 <- table[id_zone_B_up_3:(id_zone_B_up_3+2),]
+      #  row.names(data_zone_B_up_3) = c(1:nrow(data_zone_B_up_3))
+    }
+    
+    id_zone_B_up_4 <- v_Position('10111', s_zone_B_up)
+    if ( id_zone_B_up_4!= -1){
+      data_zone_B_up_4 <- table[id_zone_B_up_4:(id_zone_B_up_4+2),]
+      #  row.names(data_zone_B_up_4) = c(1:nrow(data_zone_B_up_4))
+    }
+    
+    id_zone_B_low <- v_Position('1111', s_zone_B_low)
+    if ( id_zone_B_low!= -1){
+      data_zone_B_low <- table[id_zone_B_low:(id_zone_B_low+2),]
+      #  row.names(data_zone_B_low) = c(1:nrow(data_zone_B_low))
+    }
+    
+    id_zone_B_low_2 <- v_Position('11101', s_zone_B_low)
+    if ( id_zone_B_low_2!= -1){
+      data_zone_B_low_2 <- table[id_zone_B_low_2:(id_zone_B_low_2+2),]
+      #  row.names(data_zone_B_low_2) = c(1:nrow(data_zone_B_low_2))
+    }
+    
+    id_zone_B_low_3 <- v_Position('11011', s_zone_B_low)
+    if ( id_zone_B_low_3!= -1){
+      data_zone_B_low_3 <- table[id_zone_B_low_3:(id_zone_B_low_3+2),]
+      #  row.names(data_zone_B_low_3) = c(1:nrow(data_zone_B_low_3))
+    }
+    
+    id_zone_B_low_4 <- v_Position('10111', s_zone_B_low)
+    if ( id_zone_B_low_4!= -1){
+      data_zone_B_low_4 <- table[id_zone_B_low_4:(id_zone_B_low_4+2),]
+      #  row.names(data_zone_B_low_4) = c(1:nrow(data_zone_B_low_4))
+    }
+    
+    Fin <- do.call(rbind,list(data_zone_B_up, data_zone_B_up_2, data_zone_B_up_3, data_zone_B_up_4,
+                              data_zone_B_low, data_zone_B_low_2, data_zone_B_low_3, data_zone_B_low_4))
+    return(Fin)
+  }
+  
+  trash6_1 <- Shewchart_6(A_Th_first,A_Th_first$Average_Thickness_nm, Av_usg[1], Sigm[1])
+  trash6_2 <- Shewchart_6(A_Th_fifth,A_Th_fifth$Average_Thickness_nm, Av_usg[2], Sigm[2])
+  trash6_3 <- Shewchart_6(A_Th_TOX,A_Th_TOX$Average_Thickness_nm, Av_usg[3], Sigm[3])
+  
+### Критерий 7: 15 последовательных точек в зоне С -----------------------------------------------
+
+  Shewchart_7 <- function(table,sample,average,sigma){
+    data_zone_C <- NULL
+    lower_c <- average - sigma
+    upper_c <- average + sigma
+    
+    s_zone_C<- s_Sequence_in(sample,lower_c,upper_c)
+    id_zone_C <- v_Position("111111111111111", s_zone_C)
+    
+    if (id_zone_C!= -1){
+      data_zone_C <- table[id_zone_C:(id_zone_C+14),]
+      row.names(data_zone_C) = c(1:nrow(data_zone_C))
+      } 
+    Fin <- data_zone_C
+    return(Fin)
+  }
+  trash7_1 <- Shewchart_7(A_Th_first,A_Th_first$Average_Thickness_nm, Av_usg[1], Sigm[1])
+  trash7_2 <- Shewchart_7(A_Th_fifth,A_Th_fifth$Average_Thickness_nm, Av_usg[2], Sigm[2])
+  trash7_3 <- Shewchart_7(A_Th_TOX,A_Th_TOX$Average_Thickness_nm, Av_usg[3], Sigm[3])
+
+### Критерий 8: 8 последовательных точек НЕ в зоне С -----------------------------------------------    
+  
+  Shewchart_8 <- function(table,sample,average,sigma){
+    data_zone_C <- NULL
+    s_zone_C <- s_Sequence_in(sample,average-sigma,average+sigma)
+    id_zone_C <- v_Position("00000000", s_zone_C)
+      if (id_zone_C!= -1){
+        data_zone_C <- table[id_zone_C:(id_zone_C+7),]
+        #row.names(data_zone_C) = c(1:nrow(data_zone_C))
+      } 
+    Fin <- data_zone_C
+    return(Fin)
+  }
+  trash8_1 <- Shewchart_8(A_Th_first,A_Th_first$Average_Thickness_nm, Av_usg[1], Sigm[1])
+  trash8_2 <- Shewchart_8(A_Th_fifth,A_Th_fifth$Average_Thickness_nm, Av_usg[2], Sigm[2])
+  trash8_3 <- Shewchart_8(A_Th_TOX,A_Th_TOX$Average_Thickness_nm, Av_usg[3], Sigm[3])
+  
+#  Создание интерактивной станицы ----------------------------------------------------------------
+
+ui <- fluidPage(
+  
+  # Заголовок страницы
+  
+  titlePanel("Статистическое управление процессом"),
+  
+  # Параметры страницы. Интерфейс
+  
+  sidebarLayout(
+    
+    
+    
+    sidebarPanel(
+      
+      # Лист с типами графиков 
+      
+      selectInput("plot_type", 
+                  label = "Тип графика",
+                  choices = c("Точечный" = "scatter", 
+                              "Линии" = "line")),
+      
+      # Лист с темами
+      
+      selectInput("theme", 
+                  label = "Тема",
+                  choices = c("Без темы" = "No theme", 
+                              "Вертикальная координатная сетка" = "google", 
+                              "Полная сетка" = "gridlight" )),
+      
+      # Лист с графиками
+      
+      selectInput("mat", 
+                  label = "Пластина",
+                  choices = c("USG - 1k" = "first", 
+                              "USG - 5k" = "fifth",
+                              "TOX - 1k" = "tox")),
+      actionButton("shux",
+                   label = "Shewhart control")
+      
+      
+    ),
+    
+    
+    #Параметры вывода для графиков
+    
+    mainPanel(
+      highchartOutput("hcontainer1", height = "1000px"),
+      highchartOutput2("hcontainer2", height = "1000px")
+      
+    )
+    
+  )
+)
+
+# Создание сервера. Настройка параметров графиков -------------------------
+  
+i<-1
+
+server = function(input, output, session) {
+  
+# Настройка 1-го графика --------------------------------------------------
+
+  output$hcontainer1 <- renderHighchart({
+    hc <- highchart() %>%
+      
+      hc_add_series( name = 'Средняя толщина плёнки, [нм]',
+                     data = A_Th_first,
+                     hcaes(x= Date, y = Average_Thickness_nm),
+                     type = 'line') %>%
+      hc_add_series( name = 'Значения толщин',
+                     data = values_first,
+                     hcaes(x= Date, y = Thickness_nm),
+                     type = 'scatter' ) %>%
+    
+      
+      hc_chart(zoomType = 'xy')%>%
+      hc_yAxis(title =  list(text ="Толщина плёнки, [нм]"),
+               allowDecimals = TRUE,
+               softMin = LCL[i],
+               softMax = UCL[i],
+               plotBands = list(list(
+                 color = 'rgba(0,255,0,0.1)',
+                 zIndex = 0,
+                 from = Av_usg[i],
+                 to = Av_usg[i] + Sigm[i],
+                 label = list(text = "C",
+                              style = list(color = 'black', fontWeight = 'bold'))
+               ),list(
+                 color = 'rgba(255,255,0,0.1)',
+                 zIndex = 0,
+                 from = Av_usg[i] + Sigm[i],
+                 to = Av_usg[i] + 2*Sigm[i],
+                 label = list(text = "B",
+                              style = list(color = 'black', fontWeight = 'bold'))
+               ),list(
+                 color = 'rgba(255,0,0,0.1)',
+                 zIndex = 0,
+                 from = Av_usg[i] + 2*Sigm[i],
+                 to = Av_usg[i] + 3*Sigm[i],
+                 label = list(text = "A",
+                              style = list(color = 'black', fontWeight = 'bold'))
+               ),list(
+                 color = 'rgba(255,0,0,0.1)',
+                 zIndex = 0,
+                 from = Av_usg[i] - 2*Sigm[i],
+                 to = Av_usg[i] - 3*Sigm[i],
+                 label = list(text = "A",
+                              style = list(color = 'black', fontWeight = 'bold'))
+               ),list(
+                 color = 'rgba(255,255,0,0.1)',
+                 zIndex = 0,
+                 from = Av_usg[i] - Sigm[i],
+                 to = Av_usg[i] - 2*Sigm[i],
+                 label = list(text = "B",
+                              style = list(color = 'black', fontWeight = 'bold'))
+               ),list(
+                 color = 'rgba(0,255,0,0.1)',
+                 zIndex = 0,
+                 from = Av_usg[i],
+                 to = Av_usg[i] - Sigm[i],
+                 label = list(text = "C",
+                              style = list(color = 'black', fontWeight = 'bold'))
+               )),
+               plotLines = list(list(
+                 value = Av_usg[i],
+                 color = 'green',
+                 width = 3,
+                 label = list(text = L_Target[i],
+                              style = list(color = 'black', fontWeight = 'bold'))
+               ),list(
+                 value = LCL[i],
+                 color = 'red',
+                 width = 3,
+                 label = list(text = L_LCL[i],
+                              style = list(color = 'black', fontWeight = 'bold'))
+               ),list(
+                 value = UCL[i],
+                 color = 'red',
+                 width = 3,
+                 label = list(text = L_UCL[i],
+                              style = list(color = 'black',fonts = "Times New Roman", fontWeight = 'bold'))
+               ))) %>%
+      hc_xAxis(title =  list(text ="Дата проведения измерений"),
+               tickPositions = unique(Data$Date),
+               tickmarkPlacement = "on",
+               type = 'datetime',
+               labels = list(format= "{value:%d.%m.%y}",
+                             rotation = -25)) %>%
+      hc_title(text = "Распределение толщин плёнки",
+               style = list(fontWeight = "bold")) %>%
+      hc_tooltip(valueDecimals = 2,
+                 xDateFormat = "%d-%m-%Y",
+                 headerFormat = '<b>{series.name}</b><br>',
+                 pointFormat = "Дата: <b>{point.x:%d-%m-%Y}</b><br>Толщина: <b>{point.y} [нм]</b>" )%>%
+      hc_credits(enabled = TRUE,
+                 text = (paste("Составлено на основе данных из таблицы :", file_path)),
+                 style = list(fontSize = "10px"))%>%
+      hc_exporting(enabled = TRUE)
+    
+   
+    if (input$mat == "fifth") {
+      i=2
+      hc$x$hc_opts$yAxis$plotLines<- NULL
+      hc$x$hc_opts$yAxis$plotBands<- NULL
+      hc <- hc %>%
+        
+        hc_rm_series("Средняя толщина плёнки, [нм]")%>%
+        hc_rm_series("Значения толщин")%>%
+        
+        hc_yAxis(
+          softMin = LCL[i],
+          softMax = UCL[i],
+          plotBands = list(list(
+            color = 'rgba(0,255,0,0.1)',
+            zIndex = 0,
+            from = Av_usg[i],
+            to = Av_usg[i] + Sigm[i],
+            label = list(text = "C",
+                         style = list(color = 'black', fontWeight = 'bold'))
+          ),list(
+            color = 'rgba(255,255,0,0.1)',
+            zIndex = 0,
+            from = Av_usg[i] + Sigm[i],
+            to = Av_usg[i] + 2*Sigm[i],
+            label = list(text = "B",
+                         style = list(color = 'black', fontWeight = 'bold'))
+          ),list(
+            color = 'rgba(255,0,0,0.1)',
+            zIndex = 0,
+            from = Av_usg[i] + 2*Sigm[i],
+            to = Av_usg[i] + 3*Sigm[i],
+            label = list(text = "A",
+                         style = list(color = 'black', fontWeight = 'bold'))
+          ),list(
+            color = 'rgba(255,0,0,0.1)',
+            zIndex = 0,
+            from = Av_usg[i] - 2*Sigm[i],
+            to = Av_usg[i] - 3*Sigm[i],
+            label = list(text = "A",
+                         style = list(color = 'black', fontWeight = 'bold'))
+          ),list(
+            color = 'rgba(255,255,0,0.1)',
+            zIndex = 0,
+            from = Av_usg[i] - Sigm[i],
+            to = Av_usg[i] - 2*Sigm[i],
+            label = list(text = "B",
+                         style = list(color = 'black', fontWeight = 'bold'))
+          ),list(
+            color = 'rgba(0,255,0,0.1)',
+            zIndex = 0,
+            from = Av_usg[i],
+            to = Av_usg[i] - Sigm[i],
+            label = list(text = "C",
+                         style = list(color = 'black', fontWeight = 'bold'))
+          )),
+          plotLines = list(list(
+            value = Av_usg[i],
+            color = 'green',
+            width = 3,
+            label = list(text = L_Target[i],
+                         style = list(color = 'black', fontWeight = 'bold'))
+          ),list(
+            value = LCL[i],
+            color = 'red',
+            width = 3,
+            label = list(text = L_LCL[i],
+                         style = list(color = 'black', fontWeight = 'bold'))
+          ),list(
+            value = UCL[i],
+            color = 'red',
+            width = 3,
+            label = list(text = L_UCL[i],
+                         style = list(color = 'black',fonts = "Times New Roman", fontWeight = 'bold'))
+          ))) %>%
+        
+        hc_add_series(data = A_Th_fifth,  
+                      type = 'line',
+                      name = "Средняя толщина плёнки, [нм]",
+                      hcaes(x= Date, y = Average_Thickness_nm),
+                      ShowInLegend = FALSE) %>%
+        hc_add_series(data = values_fifth,  
+                      type = 'scatter',
+                      name = "Значения толщин",
+                      hcaes(x= Date, y = Thickness_nm),
+                      ShowInLegend = FALSE)
+    } else if (input$mat == "tox"){
+      i=3
+      hc$x$hc_opts$yAxis$plotLines<- NULL
+      hc$x$hc_opts$yAxis$plotBands<- NULL
+      hc <- hc %>%
+        
+        hc_rm_series("Средняя толщина плёнки, [нм]")%>%
+        hc_rm_series("Значения толщин")%>%
+        
+        hc_yAxis(
+          softMin = LCL[i],
+          softMax = UCL[i],
+          plotBands = list(list(
+            color = 'rgba(0,255,0,0.1)',
+            zIndex = 0,
+            from = Av_usg[i],
+            to = Av_usg[i] + Sigm[i],
+            label = list(text = "C",
+                         style = list(color = 'black', fontWeight = 'bold'))
+          ),list(
+            color = 'rgba(255,255,0,0.1)',
+            zIndex = 0,
+            from = Av_usg[i] + Sigm[i],
+            to = Av_usg[i] + 2*Sigm[i],
+            label = list(text = "B",
+                         style = list(color = 'black', fontWeight = 'bold'))
+          ),list(
+            color = 'rgba(255,0,0,0.1)',
+            zIndex = 0,
+            from = Av_usg[i] + 2*Sigm[i],
+            to = Av_usg[i] + 3*Sigm[i],
+            label = list(text = "A",
+                         style = list(color = 'black', fontWeight = 'bold'))
+          ),list(
+            color = 'rgba(255,0,0,0.1)',
+            zIndex = 0,
+            from = Av_usg[i] - 2*Sigm[i],
+            to = Av_usg[i] - 3*Sigm[i],
+            label = list(text = "A",
+                         style = list(color = 'black', fontWeight = 'bold'))
+          ),list(
+            color = 'rgba(255,255,0,0.1)',
+            zIndex = 0,
+            from = Av_usg[i] - Sigm[i],
+            to = Av_usg[i] - 2*Sigm[i],
+            label = list(text = "B",
+                         style = list(color = 'black', fontWeight = 'bold'))
+          ),list(
+            color = 'rgba(0,255,0,0.1)',
+            zIndex = 0,
+            from = Av_usg[i],
+            to = Av_usg[i] - Sigm[i],
+            label = list(text = "C",
+                         style = list(color = 'black', fontWeight = 'bold'))
+          )),
+          plotLines = list(list(
+            value = Av_usg[i],
+            color = 'green',
+            width = 3,
+            label = list(text = L_Target[i],
+                         style = list(color = 'black', fontWeight = 'bold'))
+          ),list(
+            value = LCL[i],
+            color = 'red',
+            width = 3,
+            label = list(text = L_LCL[i],
+                         style = list(color = 'black', fontWeight = 'bold'))
+          ),list(
+            value = UCL[i],
+            color = 'red',
+            width = 3,
+            label = list(text = L_UCL[i],
+                         style = list(color = 'black',fonts = "Times New Roman", fontWeight = 'bold'))
+          ))) %>%
+        
+        hc_add_series(data = A_Th_TOX,  
+                      type = 'line',
+                      name = "Средняя толщина плёнки, [нм]",
+                      hcaes(x= Date, y = Average_Thickness_nm),
+                      ShowInLegend = FALSE) %>%
+        hc_add_series(data = values_tox,  
+                      type = 'scatter',
+                      name = "Значения толщин",
+                      hcaes(x= Date, y = Thickness_nm),
+                      ShowInLegend = FALSE)        
+            }
+   
+    if (input$shux) {
+    if (input$mat == "fifth"){
+      if (!is.null(trash1_2)){
+        hc <- hc %>%
+        hc_add_series(data = trash1_2,  
+                      type = 'scatter',
+                      name = "Выход за контрольные границы",
+                      hcaes(x= Date, y = Average_Thickness_nm),
+                      ShowInLegend = FALSE,
+                      color = 'red',
+                      marker = list(symbol = 'circle')) }
+      if (!is.null(trash2_2)){
+        hc <- hc %>%
+          hc_add_series(data = trash2_2,  
+                        type = 'scatter',
+                        name = "9 подряд в зоне С или по одну сторону от среднего",
+                        hcaes(x= Date, y = Average_Thickness_nm),
+                        ShowInLegend = FALSE,
+                        color = 'red',
+                        marker = list(symbol = 'circle')) }
+      if (!is.null(trash3_2)){
+        hc <- hc %>%
+          hc_add_series(data = trash3_2,  
+                        type = 'scatter',
+                        name = "6 последовательно возрастающих или убывающих точек",
+                        hcaes(x= Date, y = Average_Thickness_nm),
+                        ShowInLegend = FALSE,
+                        color = 'red',
+                        marker = list(symbol = 'circle')) }
+      if (!is.null(trash4_2)){
+        hc <- hc %>%
+          hc_add_series(data = trash4_2,  
+                        type = 'scatter',
+                        name = "14 последовательно попеременно возрастающих и убывающих точек",
+                        hcaes(x= Date, y = Average_Thickness_nm),
+                        ShowInLegend = FALSE,
+                        color = 'red',
+                        marker = list(symbol = 'circle')) }
+      if (!is.null(trash5_2)){
+        hc <- hc %>%
+          hc_add_series(data = trash5_2,  
+                        type = 'scatter',
+                        name = "2 из 3 точек в зоне А или выше ее",
+                        hcaes(x= Date, y = Average_Thickness_nm),
+                        ShowInLegend = FALSE,
+                        color = 'red',
+                        marker = list(symbol = 'circle')) }
+      if (!is.null(trash6_2)){
+        hc <- hc %>%
+          hc_add_series(data = trash6_2,  
+                        type = 'scatter',
+                        name = "4 из 5 точек в зоне B или выше ее",
+                        hcaes(x= Date, y = Average_Thickness_nm),
+                        ShowInLegend = FALSE,
+                        color = 'red',
+                        marker = list(symbol = 'circle')) }
+      if (!is.null(trash7_2)){
+        hc <- hc %>%
+          hc_add_series(data = trash7_2,  
+                        type = 'scatter',
+                        name = "15 последовательных точек в зоне С по обе стороны от СL",
+                        hcaes(x= Date, y = Average_Thickness_nm),
+                        ShowInLegend = FALSE,
+                        color = 'red',
+                        marker = list(symbol = 'circle')) }
+      if (!is.null(trash8_2)){
+        hc <- hc %>%
+          hc_add_series(data = trash8_2,  
+                        type = 'scatter',
+                        name = "8 последовательных точек НЕ в зоне С",
+                        hcaes(x= Date, y = Average_Thickness_nm),
+                        ShowInLegend = FALSE,
+                        color = 'red',
+                        marker = list(symbol = 'circle')) }
+    } else if (input$mat == "tox"){
+      if (!is.null(trash1_3)){
+        hc <- hc %>%
+          hc_add_series(data = trash1_3,  
+                        type = 'scatter',
+                        name = "Выход за контрольные границы",
+                        hcaes(x= Date, y = Average_Thickness_nm),
+                        ShowInLegend = FALSE,
+                        color = 'red',
+                        marker = list(symbol = 'circle')) }
+      if (!is.null(trash2_3)){
+        hc <- hc %>%
+          hc_add_series(data = trash2_3,  
+                        type = 'scatter',
+                        name = "9 подряд в зоне С или по одну сторону от среднего",
+                        hcaes(x= Date, y = Average_Thickness_nm),
+                        ShowInLegend = FALSE,
+                        color = 'red',
+                        marker = list(symbol = 'circle')) }
+      if (!is.null(trash3_3)){
+        hc <- hc %>%
+          hc_add_series(data = trash3_3,  
+                        type = 'scatter',
+                        name = "6 последовательно возрастающих или убывающих точек",
+                        hcaes(x= Date, y = Average_Thickness_nm),
+                        ShowInLegend = FALSE,
+                        color = 'red',
+                        marker = list(symbol = 'circle')) }
+      if (!is.null(trash4_3)){
+        hc <- hc %>%
+          hc_add_series(data = trash4_3,  
+                        type = 'scatter',
+                        name = "14 последовательно попеременно возрастающих и убывающих точек",
+                        hcaes(x= Date, y = Average_Thickness_nm),
+                        ShowInLegend = FALSE,
+                        color = 'red',
+                        marker = list(symbol = 'circle')) }
+      if (!is.null(trash5_3)){
+        hc <- hc %>%
+          hc_add_series(data = trash5_3,  
+                        type = 'scatter',
+                        name = "2 из 3 точек в зоне А или выше ее",
+                        hcaes(x= Date, y = Average_Thickness_nm),
+                        ShowInLegend = FALSE,
+                        color = 'red',
+                        marker = list(symbol = 'circle')) }
+      if (!is.null(trash6_2)){
+        hc <- hc %>%
+          hc_add_series(data = trash6_2,  
+                        type = 'scatter',
+                        name = "4 из 5 точек в зоне B или выше ее",
+                        hcaes(x= Date, y = Average_Thickness_nm),
+                        ShowInLegend = FALSE,
+                        color = 'red',
+                        marker = list(symbol = 'circle')) }
+      if (!is.null(trash7_3)){
+        hc <- hc %>%
+          hc_add_series(data = trash7_3,  
+                        type = 'scatter',
+                        name = "15 последовательных точек в зоне С по обе стороны от СL",
+                        hcaes(x= Date, y = Average_Thickness_nm),
+                        ShowInLegend = FALSE,
+                        color = 'red',
+                        marker = list(symbol = 'circle')) }
+      if (!is.null(trash8_3)){
+        hc <- hc %>%
+          hc_add_series(data = trash8_3,  
+                        type = 'scatter',
+                        name = "8 последовательных точек НЕ в зоне С",
+                        hcaes(x= Date, y = Average_Thickness_nm),
+                        ShowInLegend = FALSE,
+                        color = 'red',
+                        marker = list(symbol = 'circle')) }
+    } else {
+      
+      if (!is.null(trash1_1)){
+        hc <- hc %>%
+        hc_add_series(data = trash1_1,  
+                      type = 'scatter',
+                      name = "Выход за контрольные границы",
+                      hcaes(x= Date, y = Average_Thickness_nm),
+                      ShowInLegend = FALSE,
+                      color = 'red',
+                      marker = list(symbol = 'circle')) 
+      }
+      if (!is.null(trash2_1)){
+        hc <- hc %>%
+          hc_add_series(data = trash2_1,  
+                        type = 'scatter',
+                        name = "9 подряд в зоне С или по одну сторону от среднего",
+                        hcaes(x= Date, y = Average_Thickness_nm),
+                        ShowInLegend = FALSE,
+                        color = 'red',
+                        marker = list(symbol = 'circle')) }
+      if (!is.null(trash3_1)){
+        hc <- hc %>%
+          hc_add_series(data = trash3_1,  
+                        type = 'scatter',
+                        name = "6 последовательно возрастающих или убывающих точек",
+                        hcaes(x= Date, y = Average_Thickness_nm),
+                        ShowInLegend = FALSE,
+                        color = 'red',
+                        marker = list(symbol = 'circle')) }
+      if (!is.null(trash4_1)){
+        hc <- hc %>%
+          hc_add_series(data = trash4_1,  
+                        type = 'scatter',
+                        name = "14 последовательно попеременно возрастающих и убывающих точек",
+                        hcaes(x= Date, y = Average_Thickness_nm),
+                        ShowInLegend = FALSE,
+                        color = 'red',
+                        marker = list(symbol = 'circle')) }
+      if (!is.null(trash5_1)){
+        hc <- hc %>%
+          hc_add_series(data = trash5_1,  
+                        type = 'scatter',
+                        name = "2 из 3 точек в зоне А или вне ее",
+                        hcaes(x= Date, y = Average_Thickness_nm),
+                        ShowInLegend = FALSE,
+                        color = 'red',
+                        marker = list(symbol = 'circle')) }
+      if (!is.null(trash6_1)){
+        hc <- hc %>%
+          hc_add_series(data = trash6_1,  
+                        type = 'scatter',
+                        name = "4 из 5 точек в зоне B или выше ее",
+                        hcaes(x= Date, y = Average_Thickness_nm),
+                        ShowInLegend = FALSE,
+                        color = 'red',
+                        marker = list(symbol = 'circle')) }
+      if (!is.null(trash7_1)){
+        hc <- hc %>%
+          hc_add_series(data = trash7_1,  
+                        type = 'scatter',
+                        name = "15 последовательных точек в зоне С по обе стороны от СL",
+                        hcaes(x= Date, y = Average_Thickness_nm),
+                        ShowInLegend = FALSE,
+                        color = 'red',
+                        marker = list(symbol = 'circle')) }
+      if (!is.null(trash8_1)){
+        hc <- hc %>%
+          hc_add_series(data = trash8_1,  
+                        type = 'scatter',
+                        name = "8 последовательных точек НЕ в зоне С",
+                        hcaes(x= Date, y = Average_Thickness_nm),
+                        ShowInLegend = FALSE,
+                        color = 'red',
+                        marker = list(symbol = 'circle')) }}
+      }
+    # Определение темы
+    if (input$theme != "No theme") {
+      theme <- switch(input$theme,
+                      google = hc_theme_google(),
+                      gridlight = hc_theme_gridlight()
+      )
+      hc <- hc %>%
+        hc_add_theme(theme)
+    }
+    
+    # Вывод графика
+    hc   })
+  
+
+# Настройка 2-го графика --------------------------------------------------
+
+
+    output$hcontainer2 <- renderHighchart({
+    hc <- highchart() %>%
+     
+      hc_add_series( name = 'Размах, [нм]',
+                     data = R_first,
+                     hcaes(x= Date, y = R),
+                     type = 'line' ) %>%
+      hc_chart(zoomType = 'xy')%>%
+      hc_yAxis(title =  list(text ="Размах, [нм]"),
+               allowDecimals = TRUE,
+               softMin = R_LCL[i],
+               softMax = R_UCL[i],
+               plotBands = list(list(
+                 color = 'rgba(0,255,0,0.1)',
+                 zIndex = 0,
+                 from = R_Target[i],
+                 to = R_Target[i] + R_Sigm[i],
+                 label = list(text = "C",
+                              style = list(color = 'black', fontWeight = 'bold'))
+               ),list(
+                 color = 'rgba(255,255,0,0.1)',
+                 zIndex = 0,
+                 from = R_Target[i] + R_Sigm[i],
+                 to = R_Target[i] + 2*R_Sigm[i],
+                 label = list(text = "B",
+                              style = list(color = 'black', fontWeight = 'bold'))
+               ),list(
+                 color = 'rgba(255,0,0,0.1)',
+                 zIndex = 0,
+                 from = R_Target[i] + 2*R_Sigm[i],
+                 to = R_Target[i] + 3*R_Sigm[i],
+                 label = list(text = "A",
+                              style = list(color = 'black', fontWeight = 'bold'))
+               ),list(
+                 color = 'rgba(255,0,0,0.1)',
+                 zIndex = 0,
+                 from = R_Target[i] - 2*R_Sigm[i],
+                 to = R_Target[i] - 3*R_Sigm[i],
+                 label = list(text = "C",
+                              style = list(color = 'black', fontWeight = 'bold'))
+               ),list(
+                 color = 'rgba(255,255,0,0.1)',
+                 zIndex = 0,
+                 from = R_Target[i] - R_Sigm[i],
+                 to = R_Target[i] - 2*R_Sigm[i],
+                 label = list(text = "B",
+                              style = list(color = 'black', fontWeight = 'bold'))
+               ),list(
+                 color = 'rgba(0,255,0,0.1)',
+                 zIndex = 0,
+                 from = R_Target[i],
+                 to = R_Target[i] - R_Sigm[i],
+                 label = list(text = "C",
+                              style = list(color = 'black', fontWeight = 'bold'))
+               )),
+               plotLines = list(list(
+                 value = R_Target[i],
+                 color = 'green',
+                 width = 3,
+                 label = list(text = LR_Target[i],
+                              style = list(color = 'black', fontWeight = 'bold'))
+               ),list(
+                 value = R_LCL[i],
+                 color = 'red',
+                 width = 3,
+                 label = list(text = LR_LCL[i],
+                              style = list(color = 'black', fontWeight = 'bold'))
+               ),list(
+                 value = R_UCL[i],
+                 color = 'red',
+                 width = 3,
+                 label = list(text = LR_UCL[i],
+                              style = list(color = 'black',fonts = "Times New Roman", fontWeight = 'bold'))
+               ))) %>%
+      hc_xAxis(title =  list(text ="Дата проведения измерений"),
+               tickPositions = unique(Data$Date),
+               tickmarkPlacement = "on",
+               type = 'datetime',
+               labels = list(format= "{value:%d-%m-%Y}",
+                             rotation = -25)) %>%
+      hc_title(text = "График размахов",
+               style = list(fontWeight = "bold")) %>%
+      hc_tooltip(valueDecimals = 2,
+                 xDateFormat = "%d-%m-%Y",
+                 headerFormat = '<b>{series.name}</b><br>',
+                 pointFormat = "Дата: <b>{point.x:%d-%m-%Y}</b><br> Размах: <b>{point.y} [нм]</b>" )%>%
+      hc_credits(enabled = TRUE,
+                 text = (paste("Составлено на основе данных из таблицы :", file_path)),
+                 style = list(fontSize = "10px"))%>%
+      hc_exporting(enabled = TRUE)
+    
+   
+    if (input$mat != "first") {
+      if (input$mat == "first"){i = 1} 
+      if (input$mat == "fifth"){i = 2} else {i = 3} 
+      hc$x$hc_opts$yAxis$plotLines<- NULL
+      hc$x$hc_opts$yAxis$plotBands<- NULL
+      hc <- hc %>%
+        
+      hc_rm_series("Размах, [нм]")%>%
+      hc_yAxis(  softMin = R_LCL[i],
+                 softMax = R_UCL[i],
+                 plotBands = list(list(
+                   color = 'rgba(0,255,0,0.1)',
+                   zIndex = 0,
+                   from = R_Target[i],
+                   to = R_Target[i] + R_Sigm[i],
+                   label = list(text = "C",
+                                style = list(color = 'black', fontWeight = 'bold'))
+                 ),list(
+                   color = 'rgba(255,255,0,0.1)',
+                   zIndex = 0,
+                   from = R_Target[i] + R_Sigm[i],
+                   to = R_Target[i] + 2*R_Sigm[i],
+                   label = list(text = "B",
+                                style = list(color = 'black', fontWeight = 'bold'))
+                 ),list(
+                   color = 'rgba(255,0,0,0.1)',
+                   zIndex = 0,
+                   from = R_Target[i] + 2*R_Sigm[i],
+                   to = R_Target[i] + 3*R_Sigm[i],
+                   label = list(text = "A",
+                                style = list(color = 'black', fontWeight = 'bold'))
+                 ),list(
+                   color = 'rgba(255,0,0,0.1)',
+                   zIndex = 0,
+                   from = R_Target[i] - 2*R_Sigm[i],
+                   to = R_Target[i] - 3*R_Sigm[i],
+                   label = list(text = "A",
+                                style = list(color = 'black', fontWeight = 'bold'))
+                 ),list(
+                   color = 'rgba(255,255,0,0.1)',
+                   zIndex = 0,
+                   from = R_Target[i] - R_Sigm[i],
+                   to = R_Target[i] - 2*R_Sigm[i],
+                   label = list(text = "B",
+                                style = list(color = 'black', fontWeight = 'bold'))
+                 ),list(
+                   color = 'rgba(0,255,0,0.1)',
+                   zIndex = 0,
+                   from = R_Target[i],
+                   to = R_Target[i] - R_Sigm[i],
+                   label = list(text = "C",
+                                style = list(color = 'black', fontWeight = 'bold'))
+                 )),
+                 plotLines = list(list(
+                   value = R_Target[i],
+                   color = 'green',
+                   width = 3,
+                   label = list(text = LR_Target[i],
+                                style = list(color = 'black', fontWeight = 'bold'))
+                 ),list(
+                   value = R_LCL[i],
+                   color = 'red',
+                   width = 3,
+                   label = list(text = LR_LCL[i],
+                                style = list(color = 'black', fontWeight = 'bold'))
+                 ),list(
+                   value = R_UCL[i],
+                   color = 'red',
+                   width = 3,
+                   label = list(text = LR_UCL[i],
+                                style = list(color = 'black',fonts = "Times New Roman", fontWeight = 'bold'))
+                 ))) %>%
+        
+      hc_add_series(data = R_tox,
+                    hcaes(x= Date, y = R),  
+                    type = 'line',
+                    name = "Размах, [нм]",
+                    ShowInLegend = FALSE)
+    }
+    
+    
+    # Определение темы
+    if (input$theme != "No theme") {
+      theme <- switch(input$theme,
+                      google = hc_theme_google(),
+                      gridlight = hc_theme_gridlight()
+      )
+      hc <- hc %>%
+        hc_add_theme(theme)
+    }
+    
+    # Вывод графика
+    hc   })
+    
+ }  
+
+
+# Запуск приложения -------------------------------------------------------
+
+
+shinyApp(ui = ui, server = server)
+

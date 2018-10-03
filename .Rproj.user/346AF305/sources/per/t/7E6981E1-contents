@@ -112,9 +112,24 @@ observeEvent(input$plot,{
   
 })
 
+library(dplyr)
+library(tidyr) 
+library(openxlsx)
+library(ggplot2)
+library(plotly)
 
+file_path <- 'FRT Weekly Monitoting_final.xlsx'
+Data <- Data_read <- read.xlsx(file_path ,sheet = 1, detectDates = TRUE)
+USG_first <- Data[Data$Material=="USG - 1k",]
+A_Th_first <- data.frame(USG_first$Date, USG_first$`Average.Thickness(nm)`)
+A_Th_first <- na.omit(A_Th_first)
+rownames(A_Th_first)= c(1:length(A_Th_first$USG_first.Date))
+names(A_Th_first) <- c('Date','Average_Thickness_nm')
+A_Th_first$Average_Thickness_nm <- round(A_Th_first$Average_Thickness_nm,2)
+A_Th_first$Date <- as.Date(as.character(A_Th_first$Date))
+A_Th_first<-A_Th_first[order(A_Th_first$Date),]
 
-
-
+plot_ly(A_Th_first, x = ~Date, y = ~Average_Thickness_nm,
+        name = 'Average Thickness', mode = 'lines+markers')
 
 

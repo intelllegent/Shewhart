@@ -1,0 +1,23 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1538563673352.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "4002831024",
+    "id" : "31B9A597",
+    "lastKnownWriteTime" : 1538579017,
+    "last_content_update" : 1538579017444,
+    "path" : "~/GitHub/Shewhart/Plotly.R",
+    "project_path" : "Plotly.R",
+    "properties" : {
+        "cursorPosition" : "112,0",
+        "scrollLine" : "87",
+        "tempName" : "Untitled1"
+    },
+    "relative_order" : 7,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

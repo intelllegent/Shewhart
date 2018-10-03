@@ -1,0 +1,23 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1538563557466.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "1759771371",
+    "id" : "696A6C7A",
+    "lastKnownWriteTime" : 1537971055,
+    "last_content_update" : 1537971055,
+    "path" : "D:/R_Projects/Inme/Graph.R",
+    "project_path" : null,
+    "properties" : {
+        "cursorPosition" : "555,43",
+        "docOutlineVisible" : "0",
+        "scrollLine" : "541"
+    },
+    "relative_order" : 6,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}
