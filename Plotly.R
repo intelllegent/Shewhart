@@ -33,80 +33,132 @@ Sigm <- sd(A_Th_first$Average_Thickness_nm, na.rm = TRUE)
 LCL <- Av_usg - 3 * Sigm
 UCL <- Av_usg + 3 * Sigm
 
+values_first <- na.omit(data.frame(Date = USG_first$Date,
+                           Thickness_nm = as.numeric(USG_first$`Thickness(nm)`)))
+
+bands_colors <- c('#FCBBA1', '#FFFFBF', '#C7E9C0',
+                  '#C7E9C0', '#FFFFBF', '#FCBBA1')
+hov_text <- paste("Date: ", A_Th_first$Date, "<br>", "Value: ",
+                  A_Th_first$Average_Thickness_nm, "nm")
+val_text <- paste("Date: ", values_first$Date, "<br>", "Value: ",
+                 values_first$Thickness_nm, "nm")
+
+av_label <- list(
+  xref = 'paper',
+  yref = 'y',
+  x = 0.05,
+  y = Av_usg,
+  xanchor = 'left',
+  yanchor = 'bottom',
+  text = ~paste("<b>", 'Av: ', Av_usg, "   Sigm: ", round(Sigm, 5),"</b>"),
+  font = list(family = 'sans-serif',
+              size = 14),
+  showarrow = FALSE)
+
+lcl_label <- list(
+  xref = 'paper',
+  yref = 'y',
+  x = 0.05,
+  y = LCL,
+  xanchor = 'left',
+  yanchor = 'bottom',
+  text = ~paste("<b>", 'LCL: ', LCL, "</b>"),
+  font = list(family = 'sans-serif',
+              size = 14),
+  showarrow = FALSE)
+
+ucl_label <- list(
+  xref = 'paper',
+  yref = 'y',
+  x = 0.05,
+  y = UCL,
+  xanchor = 'left',
+  yanchor = 'bottom',
+  text = ~paste("<b>", 'UCL: ', UCL, "</b>"),
+  font = list(family = 'sans-serif',
+              size = 14),
+  showarrow = FALSE)
 
 
-plot_ly(A_Th_first, x = ~Date, y = ~Average_Thickness_nm,
-        name = 'Average Thickness',
-        type = 'scatter',
-        mode = 'lines+markers+text')%>%
-  add_lines(y = Av_usg,
-            name = 'Average', 
-            type = 'scatter',
-            hoverinfo = 'none', 
-            showlegend = FALSE, 
-            color = I('green'),
-            text = paste('Internet ')) %>%
-  add_lines(y = LCL, 
+
+
+# 
+# p <- plot_ly(A_Th_first, x = ~Date, y = ~Average_Thickness_nm,
+#         name = 'Av_Thick',
+#         type = 'scatter',
+#         mode = 'lines+markers',
+#         text = hov_text,
+#         hoverinfo  = 'text+name')
+
+p <- plot_ly(data = values_first,
+             x = ~Date,
+             y = ~Thickness_nm,
+             name = 'Thick',
+             mode = 'markers',
+             type = 'scatter',
+             text = val_text,
+             hoverinfo  = 'text+name')
+p <- add_trace(p=p,
+           
+               x = A_Th_first$Date,
+               y = A_Th_first$Average_Thickness_nm,
+               name = 'Av_Thick',
+                       type = 'scatter',
+                       mode = 'lines+markers'
+                      )
+
+# p <- add_trace(p=p,
+#                data = values_first,
+#                x = ~Date,
+#                y = ~Thickness_nm,
+#                name = 'Thick',
+#                type = 'scatter',
+#                text = val_text,
+#                hoverinfo  = 'text+name')
+
+p <- add_lines(p=p,
+               y = Av_usg,
+               name = 'Av', 
+               type = 'scatter',
+               hoverinfo = 'text',
+               showlegend = FALSE, 
+               color = I('green'),
+               text = "Greeeeeeen")
+
+  p <- add_lines(p=p,
+            y = LCL, 
             name = 'LCL', 
             hoverinfo = 'none', 
             showlegend = FALSE,
-            color = I('red')) %>%
-  add_lines(y = UCL,
+            color = I('red')) 
+  p <- add_lines(p=p,
+            y = UCL,
             name = 'UCL',
             hoverinfo = 'none',
             showlegend = FALSE,
-            color = I('red')) %>%
-  add_ribbons(ymin = LCL,
-              ymax = LCL + Sigm,
-              color = '#FCBBA1',
-              hoverinfo = 'none',
-              showlegend = FALSE,
-              line = list(
-                width = 0
-              ))%>%
-  add_ribbons(ymin = LCL + Sigm,
-              ymax = LCL + 2 * Sigm,
-              color = I('#FFFFBF'),
-              hoverinfo = 'none',
-              showlegend = FALSE,
-              line = list(
-                width = 0
-              ))%>%
-  add_ribbons(ymin = LCL + 2 * Sigm,
-              ymax = LCL + 3 * Sigm,
-              color = I('#C7E9C0'),
-              hoverinfo = 'none',
-              showlegend = FALSE,
-              line = list(
-                width = 0
-              ))%>%
-  add_ribbons(ymin = LCL + 3 * Sigm,
-              ymax = LCL + 4 * Sigm,
-              color = I("#C7E9C0"),
-              hoverinfo = 'none',
-              showlegend = FALSE,
-              line = list(
-                width = 0
-              ))%>%
-  add_ribbons(ymin = LCL + 4 * Sigm,
-              ymax = LCL + 5 * Sigm,
-              color = I('#FFFFBF'),
-              hoverinfo = 'none',
-              showlegend = FALSE,
-              line = list(
-                width = 0
-              ))%>%
-  add_ribbons(ymin = LCL + 5 * Sigm,
-              ymax = LCL + 6 * Sigm,
-              color = '#FCBBA1',
-              hoverinfo = 'none',
-              showlegend = FALSE,
-              line = list(
-                width = 0
-              ))%>%
+            color = I('red'))
   
-    layout(title = 'Film thickness distribution',
-           legend = list(orientation = 'h'),
-           xaxis = list(title = 'Process date'),
-           yaxis = list(title = 'Thickness, [nm]')
+  for (i in 1:6) {
+    p <- add_ribbons(p=p,
+                     ymin = LCL + (i-1)*Sigm,
+                     ymax = LCL + i*Sigm,
+                     color = I(bands_colors[i]),
+                     hoverinfo = 'none',
+                     showlegend = FALSE,
+                     line = list(width = 0)
+                    )
+                  }
+  
+    p <- layout(p=p,
+                title = 'Film thickness distribution',
+                legend = list(orientation = 'h'),
+                xaxis = list(title = 'Process date'),
+                yaxis = list(title = 'Thickness, [nm]')
     )
+    p <- layout(p=p,
+                annotations = av_label)
+    p <- layout(p=p,
+                annotations = lcl_label)
+    p <- layout(p=p,
+                annotations = ucl_label)
+p

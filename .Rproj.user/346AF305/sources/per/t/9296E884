@@ -1,0 +1,23 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1538640322416.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "570984506",
+    "id" : "9296E884",
+    "lastKnownWriteTime" : 1538640335,
+    "last_content_update" : 1538640335645,
+    "path" : "~/GitHub/Shewhart/Plotly_old.R",
+    "project_path" : "Plotly_old.R",
+    "properties" : {
+        "cursorPosition" : "48,6",
+        "scrollLine" : "0",
+        "tempName" : "Untitled1"
+    },
+    "relative_order" : 7,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}
