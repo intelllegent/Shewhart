@@ -1,0 +1,29 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1538744322687.000,
+    "dirty" : false,
+    "encoding" : "",
+    "folds" : "",
+    "hash" : "0",
+    "id" : "D5DCBE71",
+    "lastKnownWriteTime" : 0,
+    "last_content_update" : 1538744322687,
+    "path" : null,
+    "project_path" : null,
+    "properties" : {
+        "cacheKey" : "ED06D770",
+        "caption" : "tib",
+        "contentUrl" : "grid_resource/gridviewer.html?env=&obj=tib&cache_key=ED06D770",
+        "displayedObservations" : 2989,
+        "environment" : "",
+        "object" : "tib",
+        "preview" : 0,
+        "totalObservations" : 2989,
+        "variables" : 2
+    },
+    "relative_order" : 11,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_dataframe"
+}

@@ -47,3 +47,25 @@ add_ribbons(p=p,
               line = list(
                 width = 0)
   )%>%
+  
+  
+  
+  # p <- add_trace(p=p,
+  #                data = values_first,
+  #                x = ~Date,
+  #                y = ~Thickness_nm,
+  # name = 'Thick',
+  # type = 'scatter',
+  # text = val_text,
+  # hoverinfo  = 'text+name')
+
+
+
+
+# 
+# p <- plot_ly(A_Th_first, x = ~Date, y = ~Average_Thickness_nm,
+#         name = 'Av_Thick',
+#         type = 'scatter',
+#         mode = 'lines+markers',
+#         text = hov_text,
+#         hoverinfo  = 'text+name')

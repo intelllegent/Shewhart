@@ -52,7 +52,7 @@ is.integer0 <- function(x)
 server <- function(input, output,session) {
 
 # Получение названий столбцов для выбора 
-  data <- reactive({
+  data <<- reactive({
     if (is.null(input$file1)) return(NULL)
     read_excel(input$file1$datapath, sheet = 1, col_names = TRUE, n_max = 0)
   })
@@ -120,8 +120,6 @@ server <- function(input, output,session) {
       }
       
       #---
-      
-      
       output$tbl <- renderDataTable({
           #if (is.null(data)) return(NULL)
           if (length(input$show_vars) == 0L)
@@ -129,6 +127,7 @@ server <- function(input, output,session) {
           else
             return(select(data, one_of(input$show_vars)))
         })
+      
       removeUI("#show_vars")
       insertUI("#vars", "afterEnd",
                actionButton("plot", "Построить график"))
@@ -137,17 +136,17 @@ server <- function(input, output,session) {
     }) 
   })
   
-  #Запрашивание построения графика
+  #Запрос на создание графика
   observeEvent(input$plot,{
     removeUI("#plot")
     output$graph <- renderUI({
       if (is.null(data())) return(NULL)
       tagList(
         radioButtons("x_graph", "Данные по оси Х:", 
-                     colnames(data())
+                     colnames(data)
                      ),
         radioButtons("y_graph", "Данные по оси Y:", 
-                     colnames(data())
+                     colnames(data)
                      )
         )
       })
@@ -158,13 +157,49 @@ server <- function(input, output,session) {
   
   #Вывод графика
   observeEvent(input$plot_1,{
-    x_var <- data[input$x_graph]
-    y_var <- data[input$y_graph]
+    # x_var <- na.omit(data[input$x_graph])
+    # y_var <- na.omit(data[input$y_graph])
+    # data <- na.omit(tibble(data[input$x_graph], data[input$y_graph]))
     
+    
+    output$plot_tools <- renderUI({
+      tagList(
+      textOutput("tool_1"),
+      actionButton("yes", "Yes"),
+      actionButton("no", "No"),
+      hr(),
+      radioButtons("g_type", "2. Graph type: ", c("markers", "markers+lines"))
+    )})
+    
+    output$tool_1 <- renderText("1. Add Grouping?")
+ #   output$tool_2 <- renderText("2. Graph type: ")
+    
+    output$plotly <- renderPlotly({
+      p <- plot_ly(
+        x = c(1:10),
+        y = c(1:5,5:1)
+      )
+      p
+    })
     removeUI("#plot_1")
     removeUI("#x_graph")
-    removeUI("#y_graph")
+    removeUI("#y_graph") 
     
+    
+  })
+  observeEvent(input$yes, {
+    output$tool_1 <- renderText("Group by: ")
+    removeUI("#yes")
+    removeUI("#no")
+    insertUI("#tool_1", "afterEnd",
+             radioButtons("grouping", "Group by: " ,colnames(data)))
+    removeUI("#tool_1")
+  })
+  
+  observeEvent(input$no, {
+    removeUI("#yes")
+    removeUI("#no")
+    removeUI("#tool_1")
   })
   
   #---

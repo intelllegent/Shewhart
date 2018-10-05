@@ -5,14 +5,14 @@
     "dirty" : false,
     "encoding" : "UTF-8",
     "folds" : "",
-    "hash" : "570984506",
+    "hash" : "603346056",
     "id" : "9296E884",
-    "lastKnownWriteTime" : 1538640335,
-    "last_content_update" : 1538640335645,
+    "lastKnownWriteTime" : 1538737646,
+    "last_content_update" : 1538737646414,
     "path" : "~/GitHub/Shewhart/Plotly_old.R",
     "project_path" : "Plotly_old.R",
     "properties" : {
-        "cursorPosition" : "48,6",
+        "cursorPosition" : "70,35",
         "scrollLine" : "0",
         "tempName" : "Untitled1"
     },

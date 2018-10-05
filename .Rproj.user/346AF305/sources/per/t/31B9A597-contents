@@ -10,7 +10,7 @@ Data <- Data_read <- read.xlsx(file_path ,sheet = 1, detectDates = TRUE)
 USG_fifth <- Data[Data$Material=="USG - 5k",]
 USG_first <- Data[Data$Material=="USG - 1k",]
 
-A_Th_first <- data.frame(USG_first$Date, USG_first$`Average.Thickness(nm)`)
+A_Th_first <- buf <- data.frame(USG_first$Date, USG_first$`Average.Thickness(nm)`)
 A_Th_first <- na.omit(A_Th_first)
 rownames(A_Th_first)= c(1:length(A_Th_first$USG_first.Date))
 names(A_Th_first) <- c('Date','Average_Thickness_nm')
@@ -34,7 +34,8 @@ LCL <- Av_usg - 3 * Sigm
 UCL <- Av_usg + 3 * Sigm
 
 values_first <- na.omit(data.frame(Date = USG_first$Date,
-                           Thickness_nm = as.numeric(USG_first$`Thickness(nm)`)))
+                           Thickness_nm = as.numeric(USG_first$`Thickness(nm)`),
+                           id = rep(1:length(unique(USG_first$Date)), each = 49)))
 
 bands_colors <- c('#FCBBA1', '#FFFFBF', '#C7E9C0',
                   '#C7E9C0', '#FFFFBF', '#FCBBA1')
@@ -50,7 +51,7 @@ av_label <- list(
   y = Av_usg,
   xanchor = 'left',
   yanchor = 'bottom',
-  text = ~paste("<b>", 'Av: ', Av_usg, "   Sigm: ", round(Sigm, 5),"</b>"),
+  text = ~paste("<b>", 'Av: ', round(Av_usg,4), "   Sigm: ", round(Sigm, 5),"</b>"),
   font = list(family = 'sans-serif',
               size = 14),
   showarrow = FALSE)
@@ -62,7 +63,7 @@ lcl_label <- list(
   y = LCL,
   xanchor = 'left',
   yanchor = 'bottom',
-  text = ~paste("<b>", 'LCL: ', LCL, "</b>"),
+  text = ~paste("<b>", 'LCL: ', round(LCL,4), "</b>"),
   font = list(family = 'sans-serif',
               size = 14),
   showarrow = FALSE)
@@ -74,47 +75,30 @@ ucl_label <- list(
   y = UCL,
   xanchor = 'left',
   yanchor = 'bottom',
-  text = ~paste("<b>", 'UCL: ', UCL, "</b>"),
+  text = ~paste("<b>", 'UCL: ', round(UCL,4), "</b>"),
   font = list(family = 'sans-serif',
               size = 14),
   showarrow = FALSE)
-
-
-
-
-# 
-# p <- plot_ly(A_Th_first, x = ~Date, y = ~Average_Thickness_nm,
-#         name = 'Av_Thick',
-#         type = 'scatter',
-#         mode = 'lines+markers',
-#         text = hov_text,
-#         hoverinfo  = 'text+name')
 
 p <- plot_ly(data = values_first,
              x = ~Date,
              y = ~Thickness_nm,
              name = 'Thick',
-             mode = 'markers',
              type = 'scatter',
+             mode = 'markers',
              text = val_text,
-             hoverinfo  = 'text+name')
+             hoverinfo  = 'text+name'
+             )
+
 p <- add_trace(p=p,
-           
                x = A_Th_first$Date,
                y = A_Th_first$Average_Thickness_nm,
                name = 'Av_Thick',
-                       type = 'scatter',
-                       mode = 'lines+markers'
-                      )
-
-# p <- add_trace(p=p,
-#                data = values_first,
-#                x = ~Date,
-#                y = ~Thickness_nm,
-#                name = 'Thick',
-#                type = 'scatter',
-#                text = val_text,
-#                hoverinfo  = 'text+name')
+               type = 'scatter',
+               mode = 'lines+markers',
+               text = hov_text,
+               hoverinfo  = 'text+name'
+               )
 
 p <- add_lines(p=p,
                y = Av_usg,
@@ -123,20 +107,24 @@ p <- add_lines(p=p,
                hoverinfo = 'text',
                showlegend = FALSE, 
                color = I('green'),
-               text = "Greeeeeeen")
-
+               text = "Greeeeeeen"
+               )
   p <- add_lines(p=p,
-            y = LCL, 
-            name = 'LCL', 
-            hoverinfo = 'none', 
-            showlegend = FALSE,
-            color = I('red')) 
+                 y = LCL,
+                 name = 'LCL',
+                 hoverinfo = 'none',
+                 showlegend = FALSE,
+                 color = I('red')
+                 ) 
   p <- add_lines(p=p,
-            y = UCL,
-            name = 'UCL',
-            hoverinfo = 'none',
-            showlegend = FALSE,
-            color = I('red'))
+                 y = UCL,
+                 name = 'UCL',
+                 hoverinfo = 'none',
+                 showlegend = FALSE,
+                 color = I('red')
+                 )
+  
+  
   
   for (i in 1:6) {
     p <- add_ribbons(p=p,
@@ -152,7 +140,9 @@ p <- add_lines(p=p,
     p <- layout(p=p,
                 title = 'Film thickness distribution',
                 legend = list(orientation = 'h'),
-                xaxis = list(title = 'Process date'),
+                xaxis = list(title = 'Process date',
+                             type = 'category'
+                             ),
                 yaxis = list(title = 'Thickness, [nm]')
     )
     p <- layout(p=p,
